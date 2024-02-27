@@ -1,3 +1,0 @@
-([('yt_dlp_tools',
-   '/Users/nedlin/Documents/PycharmProjects/yt_dlp_tools/dist/yt_dlp_tools',
-   'EXECUTABLE')],)
