@@ -11,7 +11,10 @@ pip install pyinstaller
 
 - Packing command
 ```
-pyinstaller -F yt_dlp_tools.py
+// paking for windwos
+pyinstaller -F yt_dlp_tools.py 
+
+//paking for macOS
 pyinstaller -F yt_dlp_tools.py --windowed 
 ```
 Hint. no console using `--noconsole`
