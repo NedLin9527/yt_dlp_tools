@@ -14,3 +14,4 @@ pip install pyinstaller
 pyinstaller -F yt_dlp_tools.py
 pyinstaller -F yt_dlp_tools.py --windowed 
 ```
+Hint. no console using `--noconsole`
