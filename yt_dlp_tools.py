@@ -3,66 +3,92 @@ from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 import threading
 import yt_dlp
-
+import os
+import webbrowser
+from datetime import datetime
 
 class VideoDownloaderApp:
-  def __init__(self, master):
-    self.master = master
-    master.title("影片下載器")
+    def __init__(self, master):
+        self.master = master
+        master.title("影片下載器")
 
-    self.url_label = tk.Label(master, text="影片URL:")
-    self.url_label.pack()
+        # URL 輸入
+        self.url_label = tk.Label(master, text="影片/音樂 URL:")
+        self.url_label.pack()
 
-    self.url_entry = tk.Entry(master, width=50)
-    self.url_entry.pack()
+        self.url_entry = tk.Entry(master, width=50)
+        self.url_entry.pack()
 
-    self.download_button = tk.Button(master, text="下載影片",
-                                     command=self.download_video)
-    self.download_button.pack()
+        # 按鈕
+        self.download_video_button = tk.Button(master, text="下載影片", command=lambda: self.start_download("video"))
+        self.download_video_button.pack()
 
-    self.message_text = ScrolledText(master, height=10, state='disabled')
-    self.message_text.pack()
+        self.download_audio_button = tk.Button(master, text="下載音樂", command=lambda: self.start_download("audio"))
+        self.download_audio_button.pack()
 
-  def download_video(self):
-    url = self.url_entry.get()
-    if url:
-      self.message_text.config(state='normal')
-      self.message_text.insert('end', "開始下載影片...\n")
-      self.message_text.config(state='disabled')
+        # 訊息顯示區
+        self.message_text = ScrolledText(master, height=10, state='disabled')
+        self.message_text.pack()
 
-      threading.Thread(target=self._start_download, args=(url,)).start()
-    else:
-      messagebox.showerror("錯誤", "請輸入影片的URL")
+    def start_download(self, download_type):
+        url = self.url_entry.get().strip()
+        if not url:
+            messagebox.showerror("錯誤", "請輸入有效的 URL")
+            return
 
-  def _start_download(self, url):
-    ydl_opts = {
-      'format': 'best',
-      'merge_output_format': 'mp4'
-    }
+        self.log_message("開始下載...")
+        threading.Thread(target=self._download, args=(url, download_type)).start()
 
-    if 'list=' in url:
-      ydl_opts.update({
-        'outtmpl': '%(playlist)s/%(title)s.%(ext)s',
-        'embed_thumbnail': True
-      })
-    else:
-      ydl_opts.update({
-        'outtmpl': '%(title)s.%(ext)s'
-      })
+    def _download(self, url, download_type):
+        options = self.get_download_options(download_type)
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-      try:
-        ydl.download([url])
+        try:
+            with yt_dlp.YoutubeDL(options) as ydl:
+                info = ydl.extract_info(url, download=True)
+                file_name = ydl.prepare_filename(info)
+                self.log_message(f"下載完成: {file_name}")
+
+                # 提示開啟目錄
+                self.master.after(0, lambda: self.prompt_open_directory(os.path.dirname(file_name)))
+        except Exception as e:
+            self.log_message(f"下載出錯: {str(e)}")
+
+    def get_download_options(self, download_type):
+        if download_type == "video":
+            return {
+                'format': 'bestvideo+bestaudio/best',
+                'merge_output_format': 'mp4',
+                'outtmpl': '%(title)s.%(ext)s',
+            }
+        elif download_type == "audio":
+            return {
+                'format': 'bestaudio/best',
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                }],
+                'outtmpl': '%(title)s.%(ext)s',
+            }
+
+    def log_message(self, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        formatted_message = f"[{timestamp}] {message}"
+        self.master.after(0, lambda: self._prepend_message(formatted_message))
+
+    def _prepend_message(self, message):
         self.message_text.config(state='normal')
-        self.message_text.insert('end', "影片下載完成\n")
-        self.message_text.config(state='disabled')
-      except Exception as e:
-        self.message_text.config(state='normal')
-        self.message_text.insert('end', f"下載出錯: {str(e)}\n")
+        current_content = self.message_text.get('1.0', 'end').strip()
+        new_content = f"{message}\n{current_content}"
+        self.message_text.delete('1.0', 'end')
+        self.message_text.insert('1.0', new_content)
         self.message_text.config(state='disabled')
 
+    def prompt_open_directory(self, directory):
+        if messagebox.askyesno("下載完成", "是否開啟下載目錄?"):
+            webbrowser.open(directory)
 
 if __name__ == "__main__":
-  root = tk.Tk()
-  app = VideoDownloaderApp(root)
-  root.mainloop()
+    root = tk.Tk()
+    app = VideoDownloaderApp(root)
+    root.mainloop()
